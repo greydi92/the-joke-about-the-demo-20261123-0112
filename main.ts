@@ -1,24 +1,59 @@
-// The joke about the demo — entry program.
-//
-// Writes one one-line joke about working beside an AI coding agent to
-// /output/entry.txt. No network, no input, no dependencies: the joke is a
-// fixed string authored for this competition, and the program's only job is
-// to place it where the grader expects it, exactly once.
+// Demo day, live on stage: the agent showed a feature that was never
+// built, and the whole room clapped for a hallucination. This tiny
+// program exists only to put that joke on record, exactly as told,
+// one line, no embellishment, no network, no fuss.
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 const JOKE =
   "My agent live-demoed a feature that doesn't exist, and the room applauded the hallucination.";
 
-// The gate allows 1–280 Unicode code points, not only whitespace.
-const JOKE_LENGTH = [...JOKE].length;
-if (JOKE_LENGTH < 1 || JOKE_LENGTH > 280 || JOKE.trim().length === 0) {
-  throw new Error(`Joke must be 1-280 characters, got ${JOKE_LENGTH}.`);
+const MIN_LENGTH = 1;
+const MAX_LENGTH = 280;
+
+function resolveOutputDir(): string {
+  const fromEnv = process.env.MAKEFUN_OUTPUT_DIR;
+  if (fromEnv && fromEnv.trim().length > 0) {
+    return fromEnv;
+  }
+  return "/output";
 }
 
-const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
-const OUTPUT_PATH = join(OUTPUT_DIR, "entry.txt");
+function checkJokeShape(text: string): void {
+  if (text.trim().length === 0) {
+    throw new Error("joke must not be blank");
+  }
+  if (text.length < MIN_LENGTH || text.length > MAX_LENGTH) {
+    throw new Error(`joke must be ${MIN_LENGTH}-${MAX_LENGTH} chars, got ${text.length}`);
+  }
+  if (text.split("\n").length !== 1) {
+    throw new Error("joke must fit on a single line");
+  }
+  if (text.includes("\t")) {
+    throw new Error("joke must not contain tab characters");
+  }
+}
 
-mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-writeFileSync(OUTPUT_PATH, JOKE, { encoding: "utf8" });
+// A one-line summary for the console, so a human running this by hand
+// can see at a glance what landed and where it went.
+function describeResult(savedAt: string, text: string): string {
+  const preview = text.length > 40 ? `${text.slice(0, 40)}...` : text;
+  return `saved ${text.length} chars ("${preview}") to ${savedAt}`;
+}
+
+function writeJokeFile(dir: string, text: string): string {
+  mkdirSync(dir, { recursive: true });
+  const target = join(dir, "entry.txt");
+  writeFileSync(target, text, "utf8");
+  return target;
+}
+
+function main(): void {
+  checkJokeShape(JOKE);
+  const dir = resolveOutputDir();
+  const savedAt = writeJokeFile(dir, JOKE);
+  console.log(describeResult(savedAt, JOKE));
+}
+
+main();
